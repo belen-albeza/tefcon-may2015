@@ -1,13 +1,13 @@
 <!doctype html>
 <html>
 <head>
-    <title>Example 00</title>
+    <title>Example 01</title>
     <meta charset="utf-8">
     <script src="../phaser.min.js"></script>
 </head>
 <body>
     <header>
-        <h1>00 - Game loop and initialisation</h1>
+        <h1>01 - Load and draw images</h1>
         <p><a href="../index.html">‹ Back</a></p>
     </header>
 
@@ -17,13 +17,13 @@
 
 var AwesomeGame = {
     // load game assets here
-    preload: function () {},
+    preload: function () {
+        this.game.load.image('ship', '../assets/images/ship.png');
+    },
     // setup game
-    create: function () {},
-    // game loop: update
-    update: function () {},
-    // game loop: render
-    render: function () {}
+    create: function () {
+        this.game.add.image(300, 200, 'ship');
+    }
 }
 
 window.onload = function ()  {
