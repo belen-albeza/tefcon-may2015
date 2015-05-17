@@ -101,6 +101,14 @@ Ship.prototype.move = function (direction) {
   );
 };
 
+Ship.prototype.update = function () {
+  // wrap in world bounds
+  if (this.x > this.game.width)  { this.x = 0; }
+  if (this.y > this.game.height) { this.y = 0; }
+  if (this.x < 0) { this.x = this.game.width; }
+  if (this.y < 0) { this.y = this.game.height; }
+}
+
 window.onload = function () {
   var game = new Phaser.Game(640, 480, Phaser.AUTO, 'game');
 
