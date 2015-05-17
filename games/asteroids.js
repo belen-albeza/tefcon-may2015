@@ -19,9 +19,11 @@ var PreloaderScene = {
     this.loadingBar.anchor.setTo(0, 0.5);
     this.load.setPreloadSprite(this.loadingBar);
 
-    // TODO: load here the assets for the game
+    // load assets for the game
     this.game.load.image('background', '../assets/images/background.png');
     this.game.load.image('ship', '../assets/images/ship.png');
+    this.game.load.image('laser', '../assets/images/laser.png');
+    this.game.load.image('asteroid', '../assets/images/asteroid.png');
   },
 
   create: function () {
@@ -33,6 +35,8 @@ var PreloaderScene = {
 // Main scene
 //
 
+ASTEROID_AMOUNT = 3;
+
 var PlayScene = {
   create: function () {
     // background
@@ -41,8 +45,17 @@ var PlayScene = {
     this.ship = new Ship(this.game, 320, 240);
     this.game.add.existing(this.ship);
 
+    this.bullets = this.game.add.group();
+    this.asteroids = this.game.add.group();
+
+    this.spawnAsteroids(ASTEROID_AMOUNT);
+
     // setup keys
     this.keys = this.game.input.keyboard.createCursorKeys();
+    this.keys.spacebar = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+    this.keys.spacebar.onDown.add(function () {
+      this.ship.shoot(this.bullets);
+    }.bind(this));
   },
 
   update: function () {
@@ -63,12 +76,24 @@ var PlayScene = {
 
     // move and stop ship
     this.ship.move(this.keys.up.isDown ? 1 : 0);
+  },
+
+  spawnAsteroids: function (amount) {
+    for (var i = 0; i < amount; i++) {
+      this.asteroids.add(new Asteroid(
+        this.game,
+        this.game.rnd.between(0, this.game.width),
+        this.game.rnd.between(0, this.game.height)
+      ));
+    }
   }
 };
 
 //
 // Sprites
 //
+
+// Ship
 
 function Ship(game, x, y) {
   // call Phaser constructor
@@ -101,12 +126,83 @@ Ship.prototype.move = function (direction) {
   );
 };
 
+Ship.prototype.shoot = function (group) {
+  var bullet = new Bullet(this.game, this.x, this.y, this.rotation);
+  group.add(bullet);
+};
+
 Ship.prototype.update = function () {
+  wrapSprite(this);
+};
+
+
+// Bullet
+
+function Bullet(game, x, y, rotation) {
+  // call Phaser constructor
+  var offset = 30;
+  Phaser.Sprite.call(this, game,
+    x + Math.cos(rotation - Math.PI / 2) * offset,
+    y + Math.sin(rotation - Math.PI / 2) * offset,
+    'laser'
+  );
+
+  this.anchor.setTo(0.5, 0.5);
+  this.rotation = rotation;
+
+  // enable physics
+  game.physics.enable(this, Phaser.Physics.ARCADE);
+  this.body.velocity.setTo(
+    Math.cos(rotation - Math.PI / 2) * Bullet.SPEED,
+    Math.sin(rotation - Math.PI / 2) * Bullet.SPEED
+  );
+}
+
+Bullet.SPEED = 350;
+
+Bullet.prototype = Object.create(Phaser.Sprite.prototype);
+Bullet.prototype.constructor = Bullet;
+
+// Asteroid
+
+function Asteroid(game, x, y) {
+  // call Phaser constructor
+  Phaser.Sprite.call(this, game, x, y, 'asteroid');
+
+  this.anchor.setTo(0.5, 0.5);
+
+  // setup physics
+  game.physics.enable(this, Phaser.Physics.ARCADE);
+  this.body.angularVelocity = game.rnd.between(Asteroid.MIN_ROTATION_SPEED,
+    Asteroid.MAX_ROTATION_SPEED);
+  var angle = game.rnd.realInRange(0, 2 * Math.PI);
+  this.body.velocity.setTo(
+    Math.cos(angle) * Asteroid.SPEED,
+    Math.sin(angle) * Asteroid.SPEED
+  );
+}
+
+Asteroid.MIN_ROTATION_SPEED = 10;
+Asteroid.MAX_ROTATION_SPEED = 100;
+Asteroid.SPEED = 100;
+
+Asteroid.prototype = Object.create(Phaser.Sprite.prototype);
+Asteroid.prototype.constructor = Asteroid;
+
+Asteroid.prototype.update = function () {
+  wrapSprite(this);
+};
+
+//
+// Utils
+//
+
+function wrapSprite(sprite) {
   // wrap in world bounds
-  if (this.x > this.game.width)  { this.x = 0; }
-  if (this.y > this.game.height) { this.y = 0; }
-  if (this.x < 0) { this.x = this.game.width; }
-  if (this.y < 0) { this.y = this.game.height; }
+  if (sprite.x > sprite.game.width)  { sprite.x = 0; }
+  if (sprite.y > sprite.game.height) { sprite.y = 0; }
+  if (sprite.x < 0) { sprite.x = sprite.game.width; }
+  if (sprite.y < 0) { sprite.y = sprite.game.height; }
 }
 
 window.onload = function () {
