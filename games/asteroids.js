@@ -20,10 +20,14 @@ var PreloaderScene = {
     this.load.setPreloadSprite(this.loadingBar);
 
     // load assets for the game
-    this.game.load.image('background', '../assets/images/background.png');
-    this.game.load.image('ship', '../assets/images/ship.png');
-    this.game.load.image('laser', '../assets/images/laser.png');
-    this.game.load.image('asteroid', '../assets/images/asteroid.png');
+    [
+      'background',
+      'ship',
+      'bullet',
+      'asteroid_big', 'asteroid_medium', 'asteroid_small'
+    ].forEach(function (x) {
+      this.game.load.image(x, '../assets/images/' + x + '.png');
+    }.bind(this));
   },
 
   create: function () {
@@ -35,7 +39,8 @@ var PreloaderScene = {
 // Main scene
 //
 
-ASTEROID_AMOUNT = 3;
+ASTEROID_AMOUNT = 2;
+FRAGMENT_AMOUNT = 3;
 
 var PlayScene = {
   create: function () {
@@ -59,10 +64,38 @@ var PlayScene = {
   },
 
   update: function () {
-    //
-    // handle player input
-    //
+    // player input
+    this._handleInput();
 
+    // collision bullets vs asteroids
+    this.game.physics.arcade.collide(this.bullets, this.asteroids,
+    function (bullet, asteroid) {
+      bullet.kill();
+      this.spawnAsteroidFragments(FRAGMENT_AMOUNT, asteroid);
+      asteroid.kill();
+    }.bind(this));
+  },
+
+  spawnAsteroids: function (amount) {
+    for (var i = 0; i < amount; i++) {
+      this.asteroids.add(new Asteroid(
+        this.game,
+        this.game.rnd.between(0, this.game.width),
+        this.game.rnd.between(0, this.game.height),
+        Asteroid.SIZE.BIG));
+    }
+  },
+
+  spawnAsteroidFragments: function (amount, asteroid) {
+    var size = Asteroid.getSmallerSize(asteroid.size);
+    if (!size) { return };
+
+    for (var i = 0; i < amount; i++) {
+      this.asteroids.add(new Asteroid(this.game, asteroid.x, asteroid.y, size));
+    }
+  },
+
+  _handleInput: function () {
     // turn ship
     if (this.keys.left.isDown) {
       this.ship.turn(-1);
@@ -76,16 +109,6 @@ var PlayScene = {
 
     // move and stop ship
     this.ship.move(this.keys.up.isDown ? 1 : 0);
-  },
-
-  spawnAsteroids: function (amount) {
-    for (var i = 0; i < amount; i++) {
-      this.asteroids.add(new Asteroid(
-        this.game,
-        this.game.rnd.between(0, this.game.width),
-        this.game.rnd.between(0, this.game.height)
-      ));
-    }
   }
 };
 
@@ -144,7 +167,7 @@ function Bullet(game, x, y, rotation) {
   Phaser.Sprite.call(this, game,
     x + Math.cos(rotation - Math.PI / 2) * offset,
     y + Math.sin(rotation - Math.PI / 2) * offset,
-    'laser'
+    'bullet'
   );
 
   this.anchor.setTo(0.5, 0.5);
@@ -163,13 +186,18 @@ Bullet.SPEED = 350;
 Bullet.prototype = Object.create(Phaser.Sprite.prototype);
 Bullet.prototype.constructor = Bullet;
 
+Bullet.prototype.update = function () {
+  wrapSprite(this);
+};
+
 // Asteroid
 
-function Asteroid(game, x, y) {
+function Asteroid(game, x, y, size) {
   // call Phaser constructor
-  Phaser.Sprite.call(this, game, x, y, 'asteroid');
+  Phaser.Sprite.call(this, game, x, y, 'asteroid_' + size);
 
   this.anchor.setTo(0.5, 0.5);
+  this.size = size;
 
   // setup physics
   game.physics.enable(this, Phaser.Physics.ARCADE);
@@ -182,9 +210,25 @@ function Asteroid(game, x, y) {
   );
 }
 
+Asteroid.getSmallerSize = function (size) {
+  switch (size) {
+    case Asteroid.SIZE.BIG:
+      return Asteroid.SIZE.MEDIUM;
+    case Asteroid.SIZE.MEDIUM:
+      return Asteroid.SIZE.SMALL;
+    default:
+      return null;
+  }
+}
+
 Asteroid.MIN_ROTATION_SPEED = 10;
 Asteroid.MAX_ROTATION_SPEED = 100;
 Asteroid.SPEED = 100;
+Asteroid.SIZE = {
+  SMALL: 'small',
+  MEDIUM: 'medium',
+  BIG: 'big'
+};
 
 Asteroid.prototype = Object.create(Phaser.Sprite.prototype);
 Asteroid.prototype.constructor = Asteroid;
@@ -192,6 +236,7 @@ Asteroid.prototype.constructor = Asteroid;
 Asteroid.prototype.update = function () {
   wrapSprite(this);
 };
+
 
 //
 // Utils
