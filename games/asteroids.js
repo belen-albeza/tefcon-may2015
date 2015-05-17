@@ -68,7 +68,7 @@ var PlayScene = {
     this._handleInput();
 
     // collision bullets vs asteroids
-    this.game.physics.arcade.collide(this.bullets, this.asteroids,
+    this.game.physics.arcade.overlap(this.bullets, this.asteroids,
     function (bullet, asteroid) {
       bullet.kill();
       this.spawnAsteroidFragments(FRAGMENT_AMOUNT, asteroid);
