@@ -50,7 +50,7 @@ var AwesomeGame = {
     update: function () {
         this.bullets.forEachAlive(function (bullet) {
             if (bullet.y < -20) {
-                bullet.destroy();
+                bullet.kill();
             }
         });
     },
