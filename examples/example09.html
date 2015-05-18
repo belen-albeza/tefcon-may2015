@@ -65,7 +65,6 @@ var AwesomeGame = {
         this.ship.tint = 0xffffff; // reset tint value (white === no tinting)
         this.asteroids.setAll('tint', 0xffffff);
         this.game.physics.arcade.overlap(this.ship, this.asteroids, function (ship, asteroid) {
-            console.log('WIIII');
             ship.tint = 0xff0000; // red tint
             asteroid.tint = 0xff0000; // red tint
         });
