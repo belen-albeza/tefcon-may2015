@@ -20,6 +20,8 @@ var PreloaderScene = {
     this.load.setPreloadSprite(this.loadingBar);
 
     // load assets for the game
+
+    // images
     [
       'background',
       'ship',
@@ -28,6 +30,9 @@ var PreloaderScene = {
     ].forEach(function (x) {
       this.game.load.image(x, '../assets/images/' + x + '.png');
     }.bind(this));
+
+    this.game.load.audio('shoot', '../assets/audio/shoot.wav');
+    this.game.load.audio('explosion', '../assets/audio/explosion.wav');
   },
 
   create: function () {
@@ -44,6 +49,12 @@ FRAGMENT_AMOUNT = 3;
 
 var PlayScene = {
   create: function () {
+    // sound effects
+    this.sfx = {
+        shoot: this.game.add.audio('shoot'),
+        explosion: this.game.add.audio('explosion')
+    };
+
     // background
     this.game.add.tileSprite(0, 0, this.game.width, this.game.height, 'background');
 
@@ -60,6 +71,7 @@ var PlayScene = {
     this.keys.spacebar = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
     this.keys.spacebar.onDown.add(function () {
       this.ship.shoot(this.bullets);
+      this.sfx.shoot.play();
     }.bind(this));
   },
 
@@ -70,9 +82,13 @@ var PlayScene = {
     // collision bullets vs asteroids
     this.game.physics.arcade.overlap(this.bullets, this.asteroids,
     function (bullet, asteroid) {
-      bullet.kill();
+      // fragment asteroid
       this.spawnAsteroidFragments(FRAGMENT_AMOUNT, asteroid);
+      // kill both the bullet and the asteroid sprites
+      bullet.kill();
       asteroid.kill();
+      // play sound
+      this.sfx.explosion.play();
     }.bind(this));
   },
 
@@ -150,8 +166,7 @@ Ship.prototype.move = function (direction) {
 };
 
 Ship.prototype.shoot = function (group) {
-  var bullet = new Bullet(this.game, this.x, this.y, this.rotation);
-  group.add(bullet);
+  Bullet.spawn(group, this.x, this.y, this.rotation);
 };
 
 Ship.prototype.update = function () {
@@ -163,28 +178,52 @@ Ship.prototype.update = function () {
 
 function Bullet(game, x, y, rotation) {
   // call Phaser constructor
-  var offset = 30;
-  Phaser.Sprite.call(this, game,
-    x + Math.cos(rotation - Math.PI / 2) * offset,
-    y + Math.sin(rotation - Math.PI / 2) * offset,
-    'bullet'
-  );
+  Phaser.Sprite.call(this, game, x, y, 'bullet');
 
   this.anchor.setTo(0.5, 0.5);
-  this.rotation = rotation;
 
   // enable physics
   game.physics.enable(this, Phaser.Physics.ARCADE);
-  this.body.velocity.setTo(
-    Math.cos(rotation - Math.PI / 2) * Bullet.SPEED,
-    Math.sin(rotation - Math.PI / 2) * Bullet.SPEED
-  );
+
+  // We split part of the initialization so we can have it when
+  // we recycle the sprite
+  this.init(x, y, rotation);
 }
 
 Bullet.SPEED = 350;
+Bullet.LIFETIME = 1200;
+
+Bullet.spawn = function (group, x, y, rotation) {
+  var bullet = group.getFirstExists(false);
+  // re-use existing slot if available
+  if (bullet) {
+    bullet.reset(x, y);
+    bullet.init(x, y, rotation);
+  }
+  // if there is no slot available, create a new sprite
+  else {
+    bullet = group.add(new Bullet(group.game, x, y, rotation));
+  }
+}
 
 Bullet.prototype = Object.create(Phaser.Sprite.prototype);
 Bullet.prototype.constructor = Bullet;
+
+Bullet.prototype.init = function (x, y, rotation) {
+    var offset = 30;
+    this.x = x + Math.cos(rotation - Math.PI / 2) * offset;
+    this.y = y + Math.sin(rotation - Math.PI / 2) * offset,
+
+    this.body.velocity.setTo(
+      Math.cos(rotation - Math.PI / 2) * Bullet.SPEED,
+      Math.sin(rotation - Math.PI / 2) * Bullet.SPEED
+    );
+
+    // auto-destroy the bullet after Bullet.LIFETIME time
+    var timer = this.game.time.create(true); // autodestroy
+    timer.add(Bullet.LIFETIME, this.kill, this);
+    timer.start();
+};
 
 Bullet.prototype.update = function () {
   wrapSprite(this);
